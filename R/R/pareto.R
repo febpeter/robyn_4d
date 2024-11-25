@@ -69,13 +69,15 @@ robyn_pareto <- function(InputCollect, OutputModels,
     nrmse_quantile90 <- quantile(resultHypParam$nrmse, probs = 0.90, na.rm = TRUE)
     decomprssd_quantile90 <- quantile(resultHypParam$decomp.rssd, probs = 0.90, na.rm = TRUE)
     MAPE_quantile90 <- quantile(resultHypParam$MAPE_train, probs = 0.90, na.rm = TRUE)
+    KL_Div_quantile90 <- quantile(resultHypParam$KL_Divergence, probs = 0.90, na.rm = TRUE)
     resultHypParam <- left_join(resultHypParam, xDecompAggCoef0, by = "solID") %>%
       mutate(
         mape.qt10 =
           .data$mape <= mape_lift_quantile10 &
           .data$nrmse <= nrmse_quantile90 &
           .data$decomp.rssd <= decomprssd_quantile90&
-          .data$MAPE_train <= MAPE_quantile90
+          .data$MAPE_train <= MAPE_quantile90&
+          .data$KL_Divergence <= KL_Div_quantile90
       )
     # Calculate Pareto-fronts (for "all" or pareto_fronts)
     resultHypParamPareto <- filter(resultHypParam, .data$mape.qt10 == TRUE)
@@ -83,11 +85,12 @@ robyn_pareto <- function(InputCollect, OutputModels,
       xi = resultHypParamPareto$nrmse,
       yi = resultHypParamPareto$decomp.rssd,
       zi = resultHypParamPareto$MAPE_train,
+      wi = resultHypParamPareto$KL_Divergence,
       pareto_fronts = ifelse("auto" %in% pareto_fronts, Inf, pareto_fronts),
       sort = FALSE
     )
     resultHypParamPareto <- resultHypParamPareto %>%
-      left_join(paretoResults, by = c("nrmse" = "x", "decomp.rssd" = "y", "MAPE_train" = "z")) %>%
+      left_join(paretoResults, by = c("nrmse" = "x", "decomp.rssd" = "y", "MAPE_train" = "z", "KL_Divergence" = "w")) %>%
       rename("robynPareto" = "pareto_front") %>%
       arrange(.data$iterNG, .data$iterPar, .data$nrmse) %>%
       select(.data$solID, .data$robynPareto) %>%
@@ -555,21 +558,21 @@ robyn_pareto <- function(InputCollect, OutputModels,
 #' @rdname robyn_outputs
 #' @param xi,yi Numeric. Coordinates values per observation.
 #' @export
-pareto_front <- function(xi, yi, zi, pareto_fronts = 1, sort = TRUE) {
-  stopifnot(length(xi) == length(yi) & length(yi) == length(zi))
-  d <- data.frame(xi, yi, zi)
-  Dtemp <- D <- d[order(d$xi, d$yi, d$zi, decreasing = FALSE), ]
+pareto_front <- function(xi, yi, zi, wi, pareto_fronts = 1, sort = TRUE) {
+  stopifnot(length(xi) == length(yi) & length(yi) == length(zi) & length(zi) == length(wi))
+  d <- data.frame(xi, yi, zi, wi)
+  Dtemp <- D <- d[order(d$xi, d$yi, d$zi, d$wi, decreasing = FALSE), ]
   df <- data.frame()
   i <- 1
   while (nrow(Dtemp) >= 1 & i <= max(pareto_fronts)) {
-    these <- Dtemp[which(!duplicated(cummin(Dtemp$yi)) & !duplicated(cummin(Dtemp$zi))), ]
+    these <- Dtemp[which(!duplicated(cummin(Dtemp$yi)) & !duplicated(cummin(Dtemp$zi)) & !duplicated(cummin(Dtemp$wi))), ]
     these$pareto_front <- i
     df <- rbind(df, these)
     Dtemp <- Dtemp[!row.names(Dtemp) %in% row.names(these), ]
     i <- i + 1
   }
-  ret <- merge(x = d, y = df, by = c("xi", "yi", "zi"), all.x = TRUE, sort = sort)
-  colnames(ret) <- c("x", "y", "z", "pareto_front")
+  ret <- merge(x = d, y = df, by = c("xi", "yi", "zi", "wi"), all.x = TRUE, sort = sort)
+  colnames(ret) <- c("x", "y", "z", "w", "pareto_front")
   return(ret)
 }
 
