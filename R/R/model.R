@@ -1194,8 +1194,8 @@ model_refit <- function(x_train, y_train, x_val, y_val, x_test, y_test,
 
   ## Adding KL Divergence
   kmax <- as.integer(0.6 * length(y_train))
-  obs_as_base <- KL.divergence(y_train, y_train_pred, k = kmax)
-  obs_as_target <- KL.divergence(y_train_pred, y_train, k = kmax)
+  obs_as_base <- FNN::KL.divergence(y_train, y_train_pred, k = kmax)
+  obs_as_target <- FNN::KL.divergence(y_train_pred, y_train, k = kmax)
 
   non_neg_mean <- function(x){
     return(mean(x[x>=0]))
