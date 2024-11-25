@@ -592,19 +592,19 @@ robyn_mmm <- function(InputCollect,
     
     # Set multi-objective dimensions for objective functions (errors)
     if (is.null(calibration_input)) {
-      optimizer$tell(ng$p$MultiobjectiveReference(), tuple(1, 1, 1))
+      optimizer$tell(ng$p$MultiobjectiveReference(), tuple(1, 1, 1, 1))
       if (is.null(objective_weights)) {
-        objective_weights <- tuple(1, 1, 1)
+        objective_weights <- tuple(1, 1, 1, 1)
       } else {
-        objective_weights <- tuple(objective_weights[1], objective_weights[2], objective_weights[3])
+        objective_weights <- tuple(objective_weights[1], objective_weights[2], objective_weights[3], objective_weights[4])
       }
       optimizer$set_objective_weights(objective_weights)
     } else {
-      optimizer$tell(ng$p$MultiobjectiveReference(), tuple(1, 1, 1))
+      optimizer$tell(ng$p$MultiobjectiveReference(), tuple(1, 1, 1, 1))
       if (is.null(objective_weights)) {
-        objective_weights <- tuple(1, 1, 1)
+        objective_weights <- tuple(1, 1, 1, 1)
       } else {
-        objective_weights <- tuple(objective_weights[1], objective_weights[2], objective_weights[3])
+        objective_weights <- tuple(objective_weights[1], objective_weights[2], objective_weights[3], objective_weights[4])
       }
       optimizer$set_objective_weights(objective_weights)
     }
@@ -867,6 +867,9 @@ robyn_mmm <- function(InputCollect,
               nrmse = nrmse,
               decomp.rssd = decomp.rssd,
               MAPE_train = mod_out$MAPE_train,
+              KL_Divergence = mod_out$KL_Divergence,
+              kl_div_obs_as_base = mod_out$kl_div_obs_as_base,
+              kl_div_obs_as_target = mod_out$kl_div_obs_as_target,
               mape = mape,
               lambda = lambda_scaled,
               lambda_hp = lambda_hp,
@@ -912,6 +915,7 @@ robyn_mmm <- function(InputCollect,
           nrmse.collect <- NULL
           decomp.rssd.collect <- NULL
           MAPE.collect <- NULL
+          KL.Divergence.collect <- NULL
           best_mape <- Inf
           if (cores == 1) {
             doparCollect <- lapply(1:iterPar, robyn_iterations)
@@ -931,6 +935,7 @@ robyn_mmm <- function(InputCollect,
           decomp.rssd.collect <- unlist(lapply(doparCollect, function(x) x$decomp.rssd))
           mape.lift.collect <- unlist(lapply(doparCollect, function(x) x$mape))
           MAPE.collect <- unlist(lapply(doparCollect, function(x) x$MAPE_train))
+          KL.Divergence.collect <- unlist(lapply(doparCollect, function(x) x$KL_Divergence))
           
           #####################################
           #### Nevergrad tells objectives
@@ -938,11 +943,11 @@ robyn_mmm <- function(InputCollect,
           if (!hyper_fixed) {
             if (is.null(calibration_input)) {
               for (co in 1:iterPar) {
-                optimizer$tell(nevergrad_hp[[co]], tuple(nrmse.collect[co], decomp.rssd.collect[co], MAPE.collect[co]))
+                optimizer$tell(nevergrad_hp[[co]], tuple(nrmse.collect[co], decomp.rssd.collect[co], MAPE.collect[co], KL.Divergence.collect[co]))
               }
             } else {
               for (co in 1:iterPar) {
-                optimizer$tell(nevergrad_hp[[co]], tuple(nrmse.collect[co], decomp.rssd.collect[co], mape.lift.collect[co]))
+                optimizer$tell(nevergrad_hp[[co]], tuple(nrmse.collect[co], decomp.rssd.collect[co], mape.lift.collect[co], MAPE.collect[co]))
               }
             }
           }
@@ -1186,6 +1191,21 @@ model_refit <- function(x_train, y_train, x_val, y_val, x_test, y_test,
   
   ## Adding MAPE
   MAPE_train <- mean(abs((y_train - y_train_pred)/(y_train)))
+
+  ## Adding KL Divergence
+  kmax <- as.integer(0.6 * length(y_train))
+  obs_as_base <- KL.divergence(y_train, y_train_pred, k = kmax)
+  obs_as_target <- KL.divergence(y_train_pred, y_train, k = kmax)
+
+  non_neg_mean <- function(x){
+    return(mean(x[x>=0]))
+  }
+
+  kl_div_obs_as_base <- non_neg_mean(obs_as_base)
+  kl_div_obs_as_target <- non_neg_mean(obs_as_target)
+
+  KL_Divergence <- mean(c(kl_div_obs_as_base, kl_div_obs_as_target), na.rm = TRUE)
+  if(is.na(KL_Divergence)) {KL_Divergence <- Inf}
   
   # Calculate all NRMSE
   nrmse_train <- sqrt(mean((y_train - y_train_pred)^2)) / (max(y_train) - min(y_train))
@@ -1201,6 +1221,9 @@ model_refit <- function(x_train, y_train, x_val, y_val, x_test, y_test,
     rsq_val = rsq_val,
     rsq_test = rsq_test,
     MAPE_train = MAPE_train,
+    KL_Divergence = KL_Divergence,
+    kl_div_obs_as_base = kl_div_obs_as_base,
+    kl_div_obs_as_target = kl_div_obs_as_target,
     nrmse_train = nrmse_train,
     nrmse_val = nrmse_val,
     nrmse_test = nrmse_test,
