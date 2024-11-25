@@ -43,7 +43,7 @@ robyn_clusters <- function(input, dep_var_type,
                            cluster_by = "hyperparameters",
                            all_media = NULL,
                            k = "auto", wss_var = 0.06, max_clusters = 10, limit = 1,
-                           weights = rep(1, 4), dim_red = "PCA",
+                           weights = rep(1, 5), dim_red = "PCA",
                            quiet = FALSE, export = FALSE, seed = 123,
                            ...) {
   set.seed(seed)
