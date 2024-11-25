@@ -147,6 +147,7 @@ print.robyn_save <- function(x, ...) {
       "| NRMSE =", signif(x$errors$nrmse, 4),
       "| DECOMP.RSSD =", signif(x$errors$decomp.rssd, 4),
       "| MAPE_train =", signif(x$errors$MAPE_train, 4),
+      "| KL_Divergence =", signif(x$errors$KL_Divergence, 4),
       "| mape =", signif(x$errors$mape, 4)
     )
   ))
