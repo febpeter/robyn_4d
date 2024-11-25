@@ -51,7 +51,7 @@ robyn_converge <- function(OutputModels,
   calibrated <- isTRUE(sum(df$mape) > 0)
 
   # Calculate deciles
-  dt_objfunc_cvg <- tidyr::gather(df, "error_type", "value", any_of(c("nrmse", "decomp.rssd", "MAPE_train", "mape"))) %>%
+  dt_objfunc_cvg <- tidyr::gather(df, "error_type", "value", any_of(c("nrmse", "decomp.rssd", "MAPE_train", "mape", "KL_Divergence"))) %>%
     select(.data$ElapsedAccum, .data$trial, .data$error_type, .data$value) %>%
     arrange(.data$trial, .data$ElapsedAccum) %>%
     filter(.data$value > 0, is.finite(.data$value)) %>%
